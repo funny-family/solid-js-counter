@@ -16,24 +16,12 @@ export var createCounterSetup: CreateCounterSetup = (predicate) => () => {
   var setCount = countSignal[1];
 
   // prettier-ignore
-  var set: CounterRecord['set'] = (predicate) => (
+  const set: CounterRecord['set'] = (predicate) => (
     setCount(counter.set(predicate))
   );
 
-  // prettier-ignore
-  const increment: CounterRecord['set'] = (predicate) => (
-    set((previousValue) => previousValue + predicate(previousValue))
-  );
-
-  // prettier-ignore
-  const decrement: CounterRecord['set'] = (predicate) => (
-    set((previousValue) => previousValue - predicate(previousValue))
-  );
-
-  recordMap.set('count', count);
   recordMap.set('set', set);
-  recordMap.set('increment', increment);
-  recordMap.set('decrement', decrement);
+  recordMap.set('count', count);
 
   return recordMap;
 };

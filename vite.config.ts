@@ -11,10 +11,14 @@ var resolvePath = (p: string) => {
 
 export default defineConfig({
   publicDir: false,
+  esbuild: {
+    legalComments: 'none',
+  },
   plugins: [
     dts({
-      rollupTypes: true,
-      outDir: resolvePath('./dist/types'),
+      outDir: resolvePath('./dist'),
+      include: resolvePath('./lib'),
+      // exclude: ['vite.config.*', 'rollup.config.*'],
     }),
     solidPlugin({
       include: 'lib/**/*',
@@ -41,15 +45,25 @@ export default defineConfig({
     copyPublicDir: false,
     lib: {
       name: pkg.name,
-      entry: resolvePath('./lib/index.ts'),
-      formats: ['es', 'cjs'],
-      fileName: (format) => {
-        if (format === 'es') {
-          return 'esm/index.js';
+      entry: {
+        'index': resolvePath('./lib/index.ts'),
+        'with-increment-decrement': resolvePath(
+          './lib/plugins/with-increment-decrement/index.ts'
+        ),
+        'with-limits': resolvePath('./lib/plugins/with-limits/index.ts'),
+      },
+      formats: ['es'],
+      fileName: (format, entryName) => {
+        if (entryName === 'index') {
+          return 'index.js';
         }
 
-        if (format === 'cjs') {
-          return 'cjs/index.js';
+        if (entryName === 'with-increment-decrement') {
+          return 'plugins/with-increment-decrement/index.js';
+        }
+
+        if (entryName === 'with-limits') {
+          return 'plugins/with-limits/index.js';
         }
 
         return '';

@@ -1,5 +1,5 @@
 import {
-  CHANGE_EVENTS_SET_SYMBOL,
+  SET_EVENTS_SET_SYMBOL,
   DECREMENT_EVENTS_SET_SYMBOL,
   INCREMENT_EVENTS_SET_SYMBOL,
   LISTENER_TYPE_SYMBOL,
@@ -10,24 +10,57 @@ import type {
   WithBaseEventsRecordEntry,
 } from './with-base-events.plugin.types';
 import type { DependentMap, PluginFunction } from '../../types';
+import type { CounterRecord } from './../../counter/counter.composable.types';
 
 export var withBaseEvents: PluginFunction<WithBaseEventsRecordEntry> = (
   recordMap: DependentMap<WithBaseEventsRecordEntry>
 ) => {
-  var changeEventsSet: WithBaseEventsRecord[typeof CHANGE_EVENTS_SET_SYMBOL] =
+  var setEventsSet: WithBaseEventsRecord[typeof SET_EVENTS_SET_SYMBOL] =
     new Set();
   var incrementEventsSet: WithBaseEventsRecord[typeof INCREMENT_EVENTS_SET_SYMBOL] =
     new Set();
   var decrementEventsSet: WithBaseEventsRecord[typeof DECREMENT_EVENTS_SET_SYMBOL] =
     new Set();
 
-  var count = recordMap.get('count')!;
+  var counter_count = recordMap.get('count')!;
+  var counter_set = recordMap.get('set')!;
+
+  const set: CounterRecord['set'] = (predicate) => {
+    var previousCount = counter_count();
+
+    return counter_set((previousValue) => {
+      const newValue = predicate(previousValue);
+
+      // prettier-ignore
+      (newValue !== previousCount) && (
+        setEventsSet.forEach((listener) => {
+          listener();
+        })
+      );
+
+      // prettier-ignore
+      (newValue > previousCount) && (
+        incrementEventsSet.forEach((listener) => {
+          listener();
+        })
+      );
+
+      // prettier-ignore
+      (newValue < previousCount) && (
+        decrementEventsSet.forEach((listener) => {
+          listener();
+        })
+      );
+
+      return newValue;
+    });
+  };
 
   const on = ((type, listener: ListenerWithTypeField) => {
     // prettier-ignore
-    type === 'change' && (
-      listener[LISTENER_TYPE_SYMBOL] = 'change',
-      changeEventsSet.add(listener)
+    type === 'set' && (
+      listener[LISTENER_TYPE_SYMBOL] = 'set',
+      setEventsSet.add(listener)
     );
 
     // prettier-ignore
@@ -47,8 +80,8 @@ export var withBaseEvents: PluginFunction<WithBaseEventsRecordEntry> = (
     const type = listener[LISTENER_TYPE_SYMBOL];
 
     // prettier-ignore
-    type === 'change' && (
-      changeEventsSet.delete(listener)
+    type === 'set' && (
+      setEventsSet.delete(listener)
     );
 
     // prettier-ignore
@@ -64,7 +97,7 @@ export var withBaseEvents: PluginFunction<WithBaseEventsRecordEntry> = (
 
   const clearEventsOf: WithBaseEventsRecord['clearEventsOf'] = (type) => {
     // prettier-ignore
-    type === 'change' && changeEventsSet.clear();
+    type === 'set' && setEventsSet.clear();
 
     // prettier-ignore
     type === 'increment' && incrementEventsSet.clear();
@@ -73,10 +106,11 @@ export var withBaseEvents: PluginFunction<WithBaseEventsRecordEntry> = (
     type === 'decrement' && decrementEventsSet.clear();
   };
 
+  recordMap.set('set', set);
   recordMap.set('on', on);
   recordMap.set('clearEvent', clearEvent);
   recordMap.set('clearEventsOf', clearEventsOf);
-  recordMap.set(CHANGE_EVENTS_SET_SYMBOL, changeEventsSet);
+  recordMap.set(SET_EVENTS_SET_SYMBOL, setEventsSet);
   recordMap.set(DECREMENT_EVENTS_SET_SYMBOL, incrementEventsSet);
   recordMap.set(DECREMENT_EVENTS_SET_SYMBOL, decrementEventsSet);
 
